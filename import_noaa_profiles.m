@@ -15,7 +15,7 @@ function [SSP] = import_noaa_profiles(lat,lon)
 % [EXT] - file extention
 
 
-dataDir = '../raw';          % TODO: move to some global env variables
+dataDir = 'raw';          % TODO: move to some global env variables
 fnameBase = 'woa13_decav_';
 fnameExt = 'v2.csv';
 
@@ -44,16 +44,16 @@ grid = '01';                          % TODO: autofill if not provided
 
 % Pull each profile
 tfname = [fnameBase 't' timePeriod fieldType grid fnameExt];
-tfile = fullfile(dataDir, tfname);
+tfile = fullfile(dataDir, 'temperature', tfname);
 worldTemps = importnoaadata(tfile);
 
 
 sfname = [fnameBase 's' timePeriod fieldType grid fnameExt];
-sfile = fullfile(dataDir, sfname);
+sfile = fullfile(dataDir, 'salinity', sfname);
 worldSalinity = importnoaadata(sfile);
 
 % Locate the closest profile
-posit = floor([lat lon])+.5             % HACK
+posit = floor([lat lon])+.5;             % HACK
 idx = (worldTemps(:,1)==posit(1) & worldTemps(:,2)==posit(2));
 if ~idx
     error('Lat/Lon profile unavailable in temperature');

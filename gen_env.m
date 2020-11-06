@@ -23,7 +23,7 @@ RMax = 101;                             % Maximum range (km)
 % NOTE: For BOUNCE RMAX is number of points
 
 % File output type
-fileType = 'R';
+env.fileType = 'R';
 % 'R' Ray trace run (.ray)
 % 'E' Eigenray trace run (.ray)
 % 'I' Incoherent TL calculation (.shd)
@@ -35,17 +35,17 @@ fileType = 'R';
 %% Set Options
 
 % SSP approximation options
-SSPType = 'P';
+SSP.SSPType = 'C';
 % 'N' N2-Linear approximation to SSP
 % 'C' C-Linear approximation to SSP
 % 'P' PCHIP approximation to SSP
 % 'S' Spline approximation to SSP
-% 'Q' Quadrilateral approximation to range-dependent SSP
+% 'Q' Quadrilateral approximation to range-dependent SSP (.ssp file)
 % 'H' Hexahedral approximation to range and depth dependent SSP
 % 'A' Analytic SSP option
 
 % Attenuation Units
-AttenUnit = 'F';
+env.AttenUnit = 'F';
 % 'N' Attenuation units: nepers/m
 % 'F' Attenuation units: dB/mkHz
 % 'M' Attenuation units: dB/m
@@ -55,13 +55,13 @@ AttenUnit = 'F';
 
 
 % Volume Attention (Optional)
-VolAtten = ' ';                         % Leave blank to ignore
+env.VolAtten = ' ';                         % Leave blank to ignore
 % ' ' Ignore volume attenuation
 % 'T' THORP attenuation
 % 'F' Francois-Garrison attenuation
 
 % Francois-Garrison Options
-if (VolAtten=='F')                      % TODO: fill in these values
+if (env.VolAtten=='F')                      % TODO: fill in these values
    SSP.T = 0;
    SSP.S = 0;
    SSP.pH = 0;
@@ -92,18 +92,17 @@ Bdry.Bot.BC     = 'A';
 % 'T' Soft-boss Twersky scatter, amplitude only.
 % 'I' Hard-boss Twersky scatter, amplitude only
 
+env.batyOn = false;
+
+
 % TODO: Acoustic Half-Space Options
 
 % Misc Option
-miscOpt = ' ';
+env.miscOpt = ' ';
 % ' ' Ignore
 % '.' Slow/robust root-finder (for KRAKENC)
 % 'A' Produce arrival time/amplitude information (for BELLHOP)
 % ???: are there more Misc options
-
-% Define option lines
-Bdry.Top.Opt    = [SSPType Bdry.Top.BC AttenUnit VolAtten miscOpt];
-Bdry.Bot.Opt    = Bdry.Bot.BC;
 
 % TODO: more sub options probably
 
@@ -115,31 +114,19 @@ SSP.NMedia = 1;     % Number of mediums with fluid-elastic interfaces.
                     % TODO: Run error checks
 
 % Define the sound speed profiles
-SSP.N  = [1:SSP.NMedia];
-SSP.z  = [0:200:5000];% Depth values for SSP
+%SSP.N  = [1:SSP.NMedia];
+SSP.N = zeros(1,SSP.NMedia);             % Define mesh points for each medium
+SSP.z  = [0:200:5000;];% Depth values each medium SSP
+SSP.c = munk_profile(SSP.z);
 % Sound speed
-SSP.c  = 1.0e+03 .*[ 1.5485 1.5303 1.5267 1.5178 1.5095 1.5043 1.5014 1.5001 1.5001 1.5010 1.5026 1.5046 1.5070 1.5097 1.5126 1.5156 1.5187 1.5218 1.5251 1.5284 1.5317 1.5350 1.5384 1.5418 1.5451 1.5485 1.5519 ]';
-SSP.cs      = zeros(26,1);               % ???: S-wave
-SSP.rho     = ones(26,1);                % ???: Density profile kg/m3
+% TODO: define a function to generate munk profile
+%SSP.c  = 1.0e+03 .*[ 1.5485 1.5303 1.5267 1.5178 1.5095 1.5043 1.5014 1.5001 1.5001 1.5010 1.5026 1.5046 1.5070 1.5097 1.5126 1.5156 1.5187 1.5218 1.5251 1.5284 1.5317 1.5350 1.5384 1.5418 1.5451 1.5485 1.5519; ]';
+SSP.cs      = zeros(size(SSP.z));               % ???: S-wave
+SSP.rho     = ones(size(SSP.z));                % ???: Density profile kg/m3
 
-% these represent the different mediums and are vertical arrays
-SSP.depth  = [SSP.z(1) SSP.z(end)];                  % Depth range of medium
-
-SSP.sigma  =  0;      % RMS roughness at interface (currently ignored)
+SSP.sigma  =  zeros(SSP.NMedia+1,1);      % RMS roughness at interfaces
 
 % TODO: insert errors for when the values don't make sense
-
-% These are the values that actually get written
-SSP.raw.z      = SSP.z;              
-SSP.raw.alphaR = SSP.c;                 % Sound speed
-SSP.raw.betaR  = SSP.cs;                % S-wave
-SSP.raw.rho = SSP.rho;                  % Density
-SSP.raw.alphaI = zeros(size(SSP.raw.z));% ???: P-wave attenuation
-SSP.raw.betaI  = zeros(size(SSP.raw.z));% ???: S-wave attenuation
-
-SSP.cz = diff( SSP.c ) ./ diff(SSP.z);% gradient of ssp (centered-difference approximation)
-                             % FIX: I don't think this should be a matrix
-
 
 % Top Halfspace (applies if Top.Opt = 'A')
 if (Bdry.Top.BC=='A')
@@ -160,16 +147,11 @@ end
 
 % Bottom Halfspace
 if (Bdry.Bot.BC=='A')
-    Bdry.Top.depth = SSP.depth(SSP.NMedia+1);% Bottom depth
     Bdry.Bot.cp     = 1600;                 % P-wave speed in halfspace
     Bdry.Bot.cs     = 0;                    % S-wave speed in halfspace
     Bdry.Bot.rho    = 1;                    % Density in halfspace
-
-    Bdry.Bot.HS.alphaR = Bdry.Bot.cp;
-    Bdry.Bot.HS.betaR = Bdry.Bot.cs;
-    Bdry.Bot.HS.rho = Bdry.Bot.rho;
-    Bdry.Bot.HS.alphaI = 0;             % P-wave attenuation
-    Bdry.Bot.HS.betaI = 0;              % S-wave attenuation
+    Bdry.Bot.alphaP = 0;
+    Bdry.Bot.alphaS = 0;
 end
 
 % Not used
@@ -191,7 +173,7 @@ Pos.Nrr = 1001;% Number of reciever ranges (<1001 and Nrz*Nrr<=50000 or 52000)
 %% Bellhop Options
 
 % Beam Type
-beamType = 'G';
+Beam.beamType = ' ';
 % 'C' Cartesian beams
 % 'R' Ray centered beams
 % 'S' Simple gaussian beams
@@ -199,17 +181,14 @@ beamType = 'G';
 % 'G' Geometric hat beams
 
 % Beam Shift
-beamShift = ' ';
+Beam.beamShift = ' ';
 % 'S' Beam shift in effect
 % ' ' Beam shift not in effect
 
 % Source Type
-sourceType = 'R';
+Beam.sourceType = ' ';
 % 'R' Point source (cylindrical coordinates)
 % 'X' Line source (Cartesian coordinates)
-
-% Set options line
-Beam.RunType = [fileType beamType beamShift sourceType];% NOTE: this gets broken up in write_bell
 
 % Options for BeamType C and R only
 Beam.epmult  = 1;                       % Epsilon Multipler
@@ -220,10 +199,8 @@ Beam.Nimage  = 3;                       % Number of images
 
 % Beam Fan
 Beam.Nbeams  = 0;                   % Use 0 to calculate automatically
-Beam.alpha = [-20:1:20]';          % Beam angles (neg towards surface)
+Beam.alpha = [-20:1:20]';           % Beam angles (neg towards surface)
 Beam.deltas  = 0;    % Step sized for tracing rays (m) (0 for default)
-Beam.Box.z   = 5500;                % Maximum depth to trace a ray (m)
-Beam.Box.r   = RMax;                % Maximum range to trace a ray (km)
 
 
 % for SCOOTER,KRAKEN,KRAKENC,SPARC
@@ -233,7 +210,7 @@ cInt.High = 1.0000e+09;                 % Phase Speed limits
 Beam.Isingl  = 0;                       % ???: not used
 
 % Put into one struct
-env.envfil = fname
+env.envfil = fname;
 env.model = model;
 env.TitleEnv = TitleEnv;
 env.freq = freq;

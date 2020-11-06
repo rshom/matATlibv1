@@ -44,7 +44,6 @@ function rays = read_rayfile(envfil)
             
             NumTopBnc = fscanf( fid, '%i', 1 );
             NumBotBnc = fscanf( fid, '%i', 1 );
-            
             if isempty( nsteps ); break; end
             switch Type
               case 'rz'
