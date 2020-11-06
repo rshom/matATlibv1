@@ -5,9 +5,9 @@ env.SSP.depth  = [env.SSP.z(1) env.SSP.z(end)];                  % Depth range o
 
 % These are the values that actually get written
 env.SSP.raw.z      = env.SSP.z;              
-env.SSP.raw.alphaR = env.SSP.c;                 % Sound speed
-env.SSP.raw.betaR  = env.SSP.cs;                % S-wave
-env.SSP.raw.rho = env.SSP.rho;                  % Density
+env.SSP.raw.alphaR = env.SSP.c(:,1);% Sound speed (only first one here)
+env.SSP.raw.betaR  = env.SSP.cs;        % S-wave
+env.SSP.raw.rho = env.SSP.rho;          % Density
 env.SSP.raw.alphaI = zeros(size(env.SSP.raw.z));% ???: P-wave attenuation
 env.SSP.raw.betaI  = zeros(size(env.SSP.raw.z));% ???: S-wave attenuation
 
