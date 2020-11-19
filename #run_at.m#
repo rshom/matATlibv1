@@ -8,6 +8,7 @@ function res = run_at(env)
 % TODO: delete files when done option
 
     write_env( env.envfil, env.model, env.TitleEnv, env.freq, env.SSP, env.Bdry, env.Pos, env.Beam, env.cInt, env.RMax);
+    if env.SSP
 
     switch upper(env.model)
       case 'BELLHOP'
